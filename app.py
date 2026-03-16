@@ -61,19 +61,27 @@ def main():
 
 
 def _open_browser(url):
-    """Open URL in Brave if available, otherwise default browser."""
+    """Open URL in Brave, then Chrome, then default browser."""
     system = platform.system()
-    brave_paths = {
-        "Windows": r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
-        "Darwin": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-        "Linux": shutil.which("brave-browser") or shutil.which("brave"),
-    }
-    brave = brave_paths.get(system)
-    if brave and os.path.exists(brave):
-        subprocess.Popen([brave, url])
-    else:
-        import webbrowser
-        webbrowser.open(url)
+    browsers = [
+        {  # Brave
+            "Windows": r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+            "Darwin": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+            "Linux": shutil.which("brave-browser") or shutil.which("brave"),
+        },
+        {  # Chrome
+            "Windows": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            "Darwin": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "Linux": shutil.which("google-chrome") or shutil.which("chromium-browser"),
+        },
+    ]
+    for paths in browsers:
+        path = paths.get(system)
+        if path and os.path.exists(path):
+            subprocess.Popen([path, url])
+            return
+    import webbrowser
+    webbrowser.open(url)
 
 
 def _run_web(args):
