@@ -3,6 +3,8 @@
 
 import argparse
 import os
+import platform
+import shutil
 import subprocess
 import sys
 
@@ -58,7 +60,20 @@ def main():
         _run_cli(args, password)
 
 
-BRAVE_PATH = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
+def _open_browser(url):
+    """Open URL in Brave if available, otherwise default browser."""
+    system = platform.system()
+    brave_paths = {
+        "Windows": r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+        "Darwin": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+        "Linux": shutil.which("brave-browser") or shutil.which("brave"),
+    }
+    brave = brave_paths.get(system)
+    if brave and os.path.exists(brave):
+        subprocess.Popen([brave, url])
+    else:
+        import webbrowser
+        webbrowser.open(url)
 
 
 def _run_web(args):
@@ -69,12 +84,7 @@ def _run_web(args):
     print(f"  {Fore.CYAN}Starting web interface on port {args.port}...{Style.RESET_ALL}")
     print(f"  {Fore.GREEN}Open: {url}{Style.RESET_ALL}\n")
 
-    # Open in Brave if available, otherwise fall back to default browser
-    if os.path.exists(BRAVE_PATH):
-        subprocess.Popen([BRAVE_PATH, url])
-    else:
-        import webbrowser
-        webbrowser.open(url)
+    _open_browser(url)
 
     import logging
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
