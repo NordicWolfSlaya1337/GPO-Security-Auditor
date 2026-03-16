@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/License-Proprietary%20(No%20Modification)-red)
 
 > Comprehensive vulnerability scanner for Active Directory Group Policy Objects.
-> Analyzes GPO exports against **80+ security rules** across **17 categories**,
+> Analyzes GPO exports against **100+ security rules** across **21 categories**,
 > generates encrypted PDF & CSV reports, and offers AI-powered remediation guidance.
 
 ---
@@ -14,7 +14,7 @@
 
 | Feature | Description |
 |---------|-------------|
-| **80+ Security Rules** | Password, lockout, Kerberos, registry, firewall, RDP, LAPS, AppLocker, SDDL, and more |
+| **100+ Security Rules** | Password, Kerberos, BitLocker, Credential Guard, DCOM, DNS, firewall, RDP, LAPS, AppLocker, SDDL, WinRM, and more |
 | **Risk Scoring** | Weighted 0-100 score with severity-based diminishing returns |
 | **Web UI** | Drag-and-drop upload, real-time SSE streaming, sortable findings table |
 | **CLI Mode** | Color-coded terminal output with severity indicators |
@@ -87,7 +87,7 @@ A unique password is generated each session for encrypting all outputs. Displaye
 ## Security Rules
 
 <details>
-<summary><b>View all 17 rule categories (80+ checks)</b></summary>
+<summary><b>View all 21 rule categories (100+ checks)</b></summary>
 
 <br>
 
@@ -95,21 +95,25 @@ A unique password is generated each session for encrypting all outputs. Displaye
 |----------|----------|-------|---------|
 | Password Policy | PWD-001 – PWD-007 | 7 | Min length, complexity, age, history |
 | Account Lockout | LCK-001 – LCK-004 | 4 | Threshold, duration, reset counter |
-| Kerberos | KRB-001 – KRB-004 | 4 | Ticket lifetime, renewal, validation |
+| Kerberos | KRB-001 – KRB-005 | 5 | Ticket lifetime, renewal, validation, weak encryption |
 | Security Options | SEC-001 – SEC-014 | 14 | Guest account, LM auth, SMB signing |
 | User Rights | URA-* | Dynamic | Dangerous privileges (SeDebugPrivilege, etc.) |
 | Audit & Logging | AUD-001, AUD-018 – AUD-020 | 4 | Subcategory coverage, script block logging |
-| Registry & Admin Templates | REG-001 – REG-021 | 17 | UAC, WDigest, LLMNR, SMBv1 |
+| Registry & Admin Templates | REG-001 – REG-024 | 20 | UAC, WDigest, LLMNR, SMBv1, WinRM |
 | Firewall | FW-001 – FW-003 | 3 | Profile state, inbound defaults |
 | RDP | RDP-001 – RDP-004 | 4 | NLA, encryption, access control |
 | Defender | DEF-001 – DEF-004 | 4 | Real-time protection, MAPS |
 | GPO Hygiene | HYG-002 – HYG-011 | 6 | Empty GPOs, naming, version mismatch |
-| SDDL Permissions | SDDL-001 – SDDL-002 | 2 | Anonymous access, Everyone write |
+| SDDL Permissions | SDDL-001 – SDDL-005 | 5 | Anonymous access, Everyone write, delegation |
 | LAPS | LAPS-001 – LAPS-004 | 4 | Deployment, password length/age |
 | Credential Exposure | CRED-001 – CRED-002 | 2 | Embedded cpassword |
-| AppLocker | APL-001 – APL-003 | 3 | Deployment, default-allow rules |
+| AppLocker | APL-001 – APL-006 | 6 | Deployment, default-allow, writable paths, DLL rules |
 | Script Security | SCR-001 – SCR-003 | 3 | Unsigned scripts, suspicious commands |
 | Local Admins | ADM-001 – ADM-002 | 2 | Excessive membership, conflicts |
+| BitLocker | BIT-001 – BIT-003 | 3 | Deployment, TPM+PIN, AD recovery escrow |
+| Credential Guard | CG-001 – CG-002 | 2 | Credential Guard, VBS enforcement |
+| DCOM Hardening | DCOM-001 – DCOM-002 | 2 | Auth level, KB5004442 hardening |
+| DNS Security | DNS-001 – DNS-003 | 3 | mDNS, secure dynamic updates, DoH |
 
 </details>
 
@@ -180,7 +184,7 @@ Export-GPOs.ps1        PowerShell script to export GPOs from AD
 
 ## Author
 
-**NordicWolfSlaya1337 (Benji Ender)**
+**NordicWolfSlaya1337**
 
 - GitHub: [@NordicWolfSlaya1337](https://github.com/NordicWolfSlaya1337)
 
@@ -193,5 +197,5 @@ This software is proprietary and provided under a custom restrictive license. Se
 - Non-commercial / non-profit use only
 - No modification or derivative works permitted
 - No redistribution or reuse in other projects
-- All rights reserved by Benji Ender (NordicWolfSlaya1337)
+- All rights reserved by NordicWolfSlaya1337
 - Violators are subject to legal action

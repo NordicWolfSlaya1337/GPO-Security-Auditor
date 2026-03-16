@@ -112,6 +112,39 @@ class SDDLRules(AuditRule):
                     expected_value="Read and Apply Group Policy only",
                 )
 
+        # SDDL-003: Non-admin groups with edit permissions
+        _ADMIN_SIDS = {"S-1-5-32-544", "S-1-5-18"}  # Built-in Admins, SYSTEM
+        _ADMIN_NAMES = {"domain admins", "enterprise admins", "system", "builtin\\administrators"}
+        for perm in gpo.permissions:
+            sid = perm.get("sid", "")
+            name = perm.get("name", "")
+            access = perm.get("access", "")
+            ptype = perm.get("type", "")
+            if ptype != "Allow":
+                continue
+            is_write = "edit" in access.lower() or "delete" in access.lower() or "modify" in access.lower()
+            if not is_write:
+                continue
+            if sid in _ADMIN_SIDS or sid == "S-1-1-0" or sid == "S-1-5-11":
+                continue  # Already caught by SDDL-001/002
+            if name.lower() in _ADMIN_NAMES:
+                continue
+            if name and sid != "S-1-1-0":
+                yield Finding(
+                    gpo_name=gpo.name, gpo_guid=gpo.guid,
+                    rule_id="SDDL-003", category=self.category,
+                    severity=Severity.HIGH,
+                    title=f"Non-admin group '{name}' has edit permissions on GPO",
+                    description=f"'{name}' (SID: {sid}) has '{access}' permissions on GPO '{gpo.name}'.",
+                    risk="Non-admin accounts with GPO edit access create shadow admin paths. A compromised "
+                         "member of this group can modify policies to escalate privileges domain-wide.",
+                    recommendation=f"Remove '{name}' from GPO edit permissions. Only Domain Admins and "
+                                   "Enterprise Admins should have edit access to Group Policy Objects.",
+                    setting_path=f"GPO Properties -> Security -> Delegation -> {name}",
+                    current_value=f"{name}: {access}",
+                    expected_value="Domain Admins/Enterprise Admins only",
+                )
+
         # Also check SDDL string directly if available
         if gpo.sddl:
             aces = _parse_dacl(gpo.sddl)
@@ -125,7 +158,26 @@ class SDDLRules(AuditRule):
 
                 trustee_name = trustee_info[0]
 
-                if not _has_write_rights(ace["rights"]):
+                has_write = _has_write_rights(ace["rights"])
+
+                # SDDL-004: Creator Owner retains full control
+                if trustee == "CO" and has_write:
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="SDDL-004", category=self.category,
+                        severity=Severity.MEDIUM,
+                        title="Creator Owner retains full control on GPO",
+                        description=f"Creator Owner has write permissions ({ace['rights']}) on GPO '{gpo.name}'.",
+                        risk="If Creator Owner has full control, the user who created the GPO retains admin access "
+                             "even if later removed from admin groups, creating a persistent backdoor.",
+                        recommendation="Remove Creator Owner from GPO permissions. Use explicit group-based delegation.",
+                        setting_path=f"GPO Properties -> Security -> Delegation -> Creator Owner",
+                        current_value=f"Creator Owner: {ace['rights']}",
+                        expected_value="No Creator Owner permissions",
+                    )
+                    continue
+
+                if not has_write:
                     continue
 
                 # Additional SDDL checks for broad groups
@@ -141,4 +193,32 @@ class SDDLRules(AuditRule):
                         setting_path=f"GPO Properties -> Security -> Delegation -> {trustee_name}",
                         current_value=f"{trustee_name}: {ace['rights']}",
                         expected_value="No anonymous access",
+                    )
+
+            # SDDL-005: Non-standard SIDs with write access
+            _KNOWN_ADMIN_TRUSTEES = {"BA", "DA", "EA", "SY", "CO"}
+            for ace in aces:
+                if ace["type"] != "A":
+                    continue
+                trustee = ace["trustee"]
+                if trustee in SDDL_SIDS or trustee in _KNOWN_ADMIN_TRUSTEES:
+                    continue  # Known SID, handled above
+                if not _has_write_rights(ace["rights"]):
+                    continue
+                # This is a raw SID (like S-1-5-21-...) with write access
+                if trustee.startswith("S-1-5-21-"):
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="SDDL-005", category=self.category,
+                        severity=Severity.MEDIUM,
+                        title="Non-standard account has write access to GPO",
+                        description=f"SID '{trustee}' has write permissions ({ace['rights']}) on GPO '{gpo.name}'. "
+                                    "This appears to be a specific user, service account, or custom group.",
+                        risk="Undocumented accounts with GPO write access create shadow admin paths. "
+                             "If this account is compromised, an attacker can modify domain-wide policies.",
+                        recommendation=f"Identify the account behind SID '{trustee}' and evaluate whether it "
+                                       "requires GPO edit permissions. Remove if not necessary.",
+                        setting_path=f"GPO Properties -> Security -> Delegation -> {trustee}",
+                        current_value=f"{trustee}: {ace['rights']}",
+                        expected_value="Only admin groups should have write access",
                     )

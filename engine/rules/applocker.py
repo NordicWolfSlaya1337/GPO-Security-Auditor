@@ -106,3 +106,91 @@ class AppLockerRules(AuditRule):
                             applies_to="workstations",
                         )
                         break
+
+        # APL-004: Allows execution from user-writable paths
+        _USER_WRITABLE = ["%temp%", "%userprofile%", "appdata", "downloads", "desktop",
+                          "c:\\users", "%localappdata%"]
+        for pol in gpo.registry_policies:
+            text = f"{pol.name} {pol.category}".lower()
+            if any(kw in text for kw in APPLOCKER_KEYWORDS) and pol.state == "Enabled":
+                for key, val in pol.values.items():
+                    val_str = str(val).lower()
+                    for writable_path in _USER_WRITABLE:
+                        if writable_path in val_str and "allow" in (val_str + key.lower()):
+                            yield Finding(
+                                gpo_name=gpo.name, gpo_guid=gpo.guid,
+                                rule_id="APL-004", category=self.category,
+                                severity=Severity.HIGH,
+                                title="AppLocker allows execution from user-writable paths",
+                                description=f"AppLocker rule in '{pol.name}' allows execution from "
+                                           f"user-writable location matching '{writable_path}'.",
+                                risk="User-writable directories (Desktop, Downloads, AppData, Temp) are the most "
+                                     "common landing locations for malware. Allowing execution from these paths "
+                                     "effectively bypasses application control.",
+                                recommendation="Remove allow rules for user-writable paths. Use publisher or hash "
+                                               "rules instead of path rules for applications in user directories.",
+                                setting_path=f"{_APL_BASE} -> {pol.name}",
+                                current_value=f"Allow rule includes {writable_path}",
+                                expected_value="No execution from user-writable paths",
+                                confidence="Medium",
+                                applies_to="workstations",
+                            )
+                            break
+                    else:
+                        continue
+                    break
+
+        # APL-005: No DLL rule collection
+        has_dll_rules = False
+        for pol in gpo.registry_policies:
+            text = f"{pol.name} {pol.category}".lower()
+            if any(kw in text for kw in APPLOCKER_KEYWORDS):
+                for key, val in pol.values.items():
+                    if "dll" in f"{key} {val}".lower():
+                        has_dll_rules = True
+                        break
+        if not has_dll_rules:
+            yield Finding(
+                gpo_name=gpo.name, gpo_guid=gpo.guid,
+                rule_id="APL-005", category=self.category,
+                severity=Severity.MEDIUM,
+                title="AppLocker does not include DLL rule collection",
+                description="This GPO configures AppLocker but does not include DLL enforcement rules.",
+                risk="Without DLL rules, attackers can bypass AppLocker by side-loading malicious DLLs "
+                     "into allowed applications. DLL hijacking is a common AppLocker bypass technique.",
+                recommendation="Enable the DLL rule collection in AppLocker. Test in audit mode first.",
+                setting_path=f"{_APL_BASE} -> DLL Rules",
+                current_value="DLL rule collection not configured",
+                expected_value="DLL rules enabled and enforced",
+                confidence="Medium",
+                applies_to="workstations",
+            )
+
+        # APL-006: Default rules only (no custom deny restrictions)
+        has_deny = False
+        allow_count = 0
+        for pol in gpo.registry_policies:
+            text = f"{pol.name} {pol.category}".lower()
+            if any(kw in text for kw in APPLOCKER_KEYWORDS) and pol.state == "Enabled":
+                for key, val in pol.values.items():
+                    val_str = f"{key} {val}".lower()
+                    if "deny" in val_str:
+                        has_deny = True
+                    if "allow" in val_str:
+                        allow_count += 1
+        if allow_count > 0 and not has_deny:
+            yield Finding(
+                gpo_name=gpo.name, gpo_guid=gpo.guid,
+                rule_id="APL-006", category=self.category,
+                severity=Severity.MEDIUM,
+                title="AppLocker has only allow rules with no deny restrictions",
+                description="AppLocker contains allow rules but no deny rules, suggesting only defaults.",
+                risk="Default AppLocker rules provide minimal protection. Without custom deny rules, "
+                     "most malware can still execute via living-off-the-land binaries.",
+                recommendation="Add deny rules to block execution from known-bad locations.",
+                setting_path=_APL_BASE,
+                current_value=f"{allow_count} allow rules, 0 deny rules",
+                expected_value="Custom allow + deny rules",
+                confidence="Low",
+                applies_to="workstations",
+            )

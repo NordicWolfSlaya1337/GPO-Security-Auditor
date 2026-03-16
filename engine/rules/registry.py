@@ -265,6 +265,57 @@ REGISTRY_CHECKS = [
                           "Enable 'Block macros from running in Office files from the Internet'. Disable 'Trust access to the VBA project object model'.",
         "expected": "Macros disabled or limited to signed only",
     },
+    {
+        "id": "REG-022",
+        "name_pattern": "AllowUnencrypted",
+        "key_pattern": "WinRM.*AllowUnencrypted",
+        "path": f"{_ADMIN_TPL} -> Windows Components -> Windows Remote Management -> WinRM Service -> Allow unencrypted traffic",
+        "severity": Severity.HIGH,
+        "check_policy": lambda p: "unencrypted" in p.name.lower() and p.state == "Enabled",
+        "check_item": lambda i: i.value_data == "1",
+        "title": "WinRM allows unencrypted traffic",
+        "description": "Windows Remote Management is configured to allow unencrypted (HTTP) traffic.",
+        "risk": "Unencrypted WinRM transmits credentials and commands in plaintext over the network. "
+                "Attackers on the same network segment can intercept PowerShell remoting sessions, "
+                "steal credentials, and capture sensitive command output.",
+        "recommendation": "Disable 'Allow unencrypted traffic' for both WinRM Service and Client. "
+                          "Enforce HTTPS listeners and require encrypted transport for all WinRM connections.",
+        "expected": "Disabled (encrypted traffic only)",
+    },
+    {
+        "id": "REG-023",
+        "name_pattern": "CredSSP",
+        "key_pattern": "WinRM.*AllowCredSSP|CredSSP.*AllowCredSSP",
+        "path": f"{_ADMIN_TPL} -> Windows Components -> Windows Remote Management -> WinRM Service -> Allow CredSSP authentication",
+        "severity": Severity.MEDIUM,
+        "check_policy": lambda p: "credssp" in p.name.lower() and p.state == "Enabled",
+        "check_item": lambda i: "credssp" in i.value_name.lower() and i.value_data == "1",
+        "title": "WinRM CredSSP authentication is enabled",
+        "description": "WinRM is configured to allow CredSSP (Credential Security Support Provider) authentication.",
+        "risk": "CredSSP sends user credentials in delegatable form to the remote server. If the remote server "
+                "is compromised, the attacker gains access to the delegated credentials for lateral movement. "
+                "CredSSP is also vulnerable to relay attacks.",
+        "recommendation": "Disable CredSSP authentication for WinRM. Use Kerberos authentication instead, "
+                          "which provides mutual authentication without exposing credentials.",
+        "expected": "Disabled (use Kerberos authentication)",
+    },
+    {
+        "id": "REG-024",
+        "name_pattern": "WinRM",
+        "key_pattern": "WinRM.*Service.*AllowAutoConfig|WinRM.*Listener",
+        "path": f"{_ADMIN_TPL} -> Windows Components -> Windows Remote Management -> WinRM Service",
+        "severity": Severity.MEDIUM,
+        "check_policy": lambda p: "winrm" in p.name.lower() and "auto" in p.name.lower() and p.state == "Enabled",
+        "check_item": lambda i: "transport" in i.value_name.lower() and "http" in i.value_data.lower() and "https" not in i.value_data.lower(),
+        "title": "WinRM is configured with HTTP listener (not HTTPS)",
+        "description": "WinRM service is configured to accept connections over HTTP rather than HTTPS.",
+        "risk": "HTTP WinRM listeners transmit data without TLS encryption. Even if message-level encryption "
+                "is used, the initial authentication may be vulnerable to downgrade attacks. "
+                "HTTPS provides transport-level security and server authentication.",
+        "recommendation": "Configure WinRM to use HTTPS listeners only. Create a certificate for the WinRM "
+                          "service and disable HTTP listeners. Use 'winrm quickconfig -transport:https'.",
+        "expected": "HTTPS transport only",
+    },
 ]
 
 

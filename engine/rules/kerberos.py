@@ -1,3 +1,4 @@
+import re
 from typing import Generator
 from collections import defaultdict
 
@@ -82,10 +83,80 @@ class KerberosRules(AuditRule):
                 applies_to="domain",
             )
 
+        # KRB-005: Weak encryption types allowed (DES/RC4)
+        yield from self._check_weak_encryption(gpo)
+
         # Run cross-GPO check
         if not KerberosRules._checked_conflicts:
             KerberosRules._checked_conflicts = True
             yield from self._check_kerberos_conflicts(all_gpos)
+
+    def _check_weak_encryption(self, gpo: GPO) -> Generator[Finding, None, None]:
+        """KRB-005: Check for weak Kerberos encryption types (DES, RC4)."""
+        _ENC_PATH = "Computer Configuration -> Policies -> Windows Settings -> Security Settings -> Local Policies -> Security Options -> Network security: Configure encryption types allowed for Kerberos"
+
+        # Check security options
+        for opt in gpo.security_options:
+            if "supportedencryptiontypes" in opt.key_name.lower() or "encryption types" in opt.display_name.lower():
+                val = opt.setting_number
+                if val is not None and val & 0x7:  # DES_CBC_CRC(1) | DES_CBC_MD5(2) | RC4_HMAC(4)
+                    weak = []
+                    if val & 0x1:
+                        weak.append("DES_CBC_CRC")
+                    if val & 0x2:
+                        weak.append("DES_CBC_MD5")
+                    if val & 0x4:
+                        weak.append("RC4_HMAC_MD5")
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="KRB-005", category=self.category,
+                        severity=Severity.HIGH,
+                        title="Weak Kerberos encryption types are allowed",
+                        description=f"Kerberos is configured to allow weak encryption: {', '.join(weak)}.",
+                        risk="DES and RC4 encryption are cryptographically broken. Attackers can crack Kerberoasted "
+                             "service tickets encrypted with RC4 in minutes. DES provides even less protection.",
+                        recommendation="Configure allowed encryption types to AES128 and AES256 only (value 0x18 = 24). "
+                                       "Remove DES and RC4 support after verifying all systems support AES.",
+                        setting_path=_ENC_PATH,
+                        current_value=f"0x{val:X} ({', '.join(weak)} enabled)",
+                        expected_value="0x18 (AES128 + AES256 only)",
+                        confidence="High",
+                        applies_to="domain",
+                    )
+                    return
+
+        # Check registry items
+        for item in gpo.registry_items:
+            if re.search(r"Kerberos.*Parameters.*SupportedEncryptionTypes|SupportedEncryptionTypes",
+                         item.key + "\\" + item.value_name, re.IGNORECASE):
+                try:
+                    val = int(item.value_data)
+                except (ValueError, TypeError):
+                    continue
+                if val & 0x7:
+                    weak = []
+                    if val & 0x1:
+                        weak.append("DES_CBC_CRC")
+                    if val & 0x2:
+                        weak.append("DES_CBC_MD5")
+                    if val & 0x4:
+                        weak.append("RC4_HMAC_MD5")
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="KRB-005", category=self.category,
+                        severity=Severity.HIGH,
+                        title="Weak Kerberos encryption types are allowed",
+                        description=f"SupportedEncryptionTypes includes weak ciphers: {', '.join(weak)}.",
+                        risk="DES and RC4 are cryptographically broken. RC4-encrypted Kerberos tickets "
+                             "can be cracked in minutes via Kerberoasting attacks.",
+                        recommendation="Set SupportedEncryptionTypes to 0x18 (24) for AES128+AES256 only.",
+                        setting_path=_ENC_PATH,
+                        current_value=f"0x{val:X} ({', '.join(weak)} enabled)",
+                        expected_value="0x18 (AES128 + AES256 only)",
+                        confidence="High",
+                        applies_to="domain",
+                    )
+                    return
 
     def _check_kerberos_conflicts(self, all_gpos: list) -> Generator[Finding, None, None]:
         """Detect contradictory Kerberos settings across GPOs."""
