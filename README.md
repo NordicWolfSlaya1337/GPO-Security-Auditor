@@ -2,6 +2,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)
 ![Version](https://img.shields.io/badge/Version-1.0-blue)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-brightgreen)
 ![License](https://img.shields.io/badge/License-Proprietary%20(No%20Modification)-red)
 
 > Comprehensive vulnerability scanner for Active Directory Group Policy Objects.
@@ -28,8 +29,9 @@
 
 ### Prerequisites
 
-- **Python 3.8+**
-- **Windows** with Active Directory access (for GPO export)
+- **Python 3.8+** (Windows, macOS, or Linux)
+- **Windows** domain-joined machine with RSAT (for GPO export only)
+- The **audit and reporting** run on any OS — just feed it the exported ZIP
 - *Optional:* [Ollama](https://ollama.ai) with a LLaMA model for AI chat
 
 ### 1. Install
@@ -53,6 +55,17 @@ Produces `{domain}_GPOs_{date}.zip` with XML reports and OU link data.
 ### 3. Run the Audit
 
 **Web (recommended):**
+
+```bash
+# Windows
+start.bat
+
+# macOS / Linux
+chmod +x start.sh
+./start.sh
+```
+
+Or run directly:
 
 ```bash
 python app.py --web
@@ -149,7 +162,7 @@ Export-GPOs.ps1        PowerShell script to export GPOs from AD
  engine/parser.py      Parses ZIP into GPO data model objects
        |
        v
- engine/rules/*.py     17 rule modules evaluate each GPO (80+ checks)
+ engine/rules/*.py     21 rule modules evaluate each GPO (100+ checks)
        |
        v
  engine/runner.py      Orchestrates parsing -> auditing -> report assembly
