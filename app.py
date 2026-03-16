@@ -122,24 +122,6 @@ def _run_cli(args, password):
     generate_csv_zip(report, csv_path, password)
     print(f"{Fore.GREEN}Done{Style.RESET_ALL} -> {csv_path}")
 
-    # Hebrew report via local LLaMA
-    try:
-        from output.translator import check_ollama_available, translate_report
-        if check_ollama_available():
-            print(f"  Generating Hebrew PDF... ", end="", flush=True)
-
-            def _he_progress(cur, tot):
-                print(f"\r  Generating Hebrew PDF... ({cur}/{tot})", end="", flush=True)
-
-            he_report = translate_report(report, _he_progress)
-            he_pdf_path = os.path.join(args.output_dir, "gpo_audit_report_he.pdf")
-            generate_pdf(he_report, he_pdf_path, password, locale="he")
-            print(f"\r  Generating Hebrew PDF... {Fore.GREEN}Done{Style.RESET_ALL} -> {he_pdf_path}")
-        else:
-            print(f"  {Fore.YELLOW}Hebrew PDF skipped (Ollama not running at localhost:11434){Style.RESET_ALL}")
-    except Exception as e:
-        print(f"  {Fore.YELLOW}Hebrew PDF skipped ({e}){Style.RESET_ALL}")
-
     # Save password.txt alongside reports
     pw_path = os.path.join(args.output_dir, "password.txt")
     with open(pw_path, "w") as f:

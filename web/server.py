@@ -21,7 +21,7 @@ from web.chat import (
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), "templates"))
 
-# Job storage: job_id -> {queue, report, status, output_dir, hebrew_available}
+# Job storage: job_id -> {queue, report, status, output_dir}
 jobs = {}
 
 # Cleanup old chat sessions on startup
@@ -54,7 +54,6 @@ def upload():
         "status": "running",
         "output_dir": output_dir,
         "zip_path": zip_path,
-        "hebrew_available": False,
     }
 
     thread = threading.Thread(target=_run_job, args=(job_id,), daemon=True)
@@ -94,18 +93,6 @@ def download_pdf(job_id):
     return send_file(pdf_path, as_attachment=True, download_name="gpo_audit_report.pdf")
 
 
-@app.route("/api/download/pdf-he/<job_id>")
-def download_pdf_he(job_id):
-    if job_id not in jobs or jobs[job_id]["status"] != "complete":
-        return jsonify({"error": "Report not ready"}), 404
-    if not jobs[job_id].get("hebrew_available"):
-        return jsonify({"error": "Hebrew report not available"}), 404
-    he_path = os.path.join(jobs[job_id]["output_dir"], "gpo_audit_report_he.pdf")
-    if not os.path.exists(he_path):
-        return jsonify({"error": "Hebrew PDF not generated"}), 404
-    return send_file(he_path, as_attachment=True, download_name="gpo_audit_report_he.pdf")
-
-
 @app.route("/api/download/csv/<job_id>")
 def download_csv(job_id):
     if job_id not in jobs or jobs[job_id]["status"] != "complete":
@@ -142,17 +129,6 @@ def manual_generate(job_id):
         csv_path = os.path.join(output_dir, "gpo_audit_findings.zip")
         generate_csv_zip(report, csv_path, password)
         _save_password_file(output_dir, password)
-
-        # Hebrew report
-        from output.translator import check_ollama_available, translate_report
-        if check_ollama_available():
-            try:
-                he_report = translate_report(report)
-                he_pdf_path = os.path.join(output_dir, "gpo_audit_report_he.pdf")
-                generate_pdf(he_report, he_pdf_path, password, locale="he")
-                jobs[job_id]["hebrew_available"] = True
-            except Exception:
-                jobs[job_id]["hebrew_available"] = False
 
         return jsonify({"status": "ok", "message": "Reports generated successfully"})
     except Exception as e:
@@ -242,32 +218,6 @@ def _run_job(job_id: str):
 
         _save_password_file(output_dir, password)
 
-        # Hebrew report via local LLaMA
-        hebrew_available = False
-        try:
-            from output.translator import check_ollama_available, translate_report
-            if check_ollama_available():
-                q.put({"type": "progress", "percent": 96, "message": "Translating report to Hebrew via local LLaMA..."})
-
-                def translation_progress(current, total):
-                    pct = 96 + int((current / max(total, 1)) * 3)  # 96-99%
-                    q.put({
-                        "type": "progress",
-                        "percent": min(pct, 99),
-                        "message": f"Translating to Hebrew ({current}/{total})...",
-                    })
-
-                he_report = translate_report(report, translation_progress)
-                he_pdf_path = os.path.join(output_dir, "gpo_audit_report_he.pdf")
-                generate_pdf(he_report, he_pdf_path, password, locale="he")
-                hebrew_available = True
-                q.put({"type": "progress", "percent": 99, "message": "Hebrew PDF report generated"})
-            else:
-                q.put({"type": "progress", "percent": 99, "message": "Hebrew report skipped (Ollama not available)"})
-        except Exception as e:
-            q.put({"type": "progress", "percent": 99, "message": f"Hebrew report skipped ({e})"})
-
-        job["hebrew_available"] = hebrew_available
         job["status"] = "complete"
         q.put({
             "type": "progress", "percent": 100,
@@ -279,7 +229,6 @@ def _run_job(job_id: str):
             "risk_label": report.risk_label,
             "total_findings": len(report.findings),
             "severity_counts": {k.value: v for k, v in report.severity_counts.items()},
-            "hebrew_available": hebrew_available,
         })
     except Exception as e:
         q.put({"type": "error", "message": str(e)})

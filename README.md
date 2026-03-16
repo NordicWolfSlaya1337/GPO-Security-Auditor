@@ -10,7 +10,6 @@ A comprehensive vulnerability scanner for Active Directory Group Policy Objects 
 - **CLI Mode** — Color-coded terminal output with severity indicators
 - **PDF Reports** — Professional formatted reports with cover page, executive summary, severity breakdown, detailed findings, and GPO inventory appendix
 - **CSV Export** — AES-256 encrypted ZIP containing findings and GPO inventory spreadsheets
-- **Hebrew PDF Reports** — Automated translation via local Ollama LLaMA with technical terms preserved in English
 - **AI Chat Assistant** — Ask questions about audit findings and get actionable remediation guidance (requires Ollama)
 - **Password Protection** — All output files are encrypted (PDF encryption + AES-256 ZIP)
 - **GPO Export Script** — Included PowerShell script for domain-wide GPO extraction
@@ -102,7 +101,7 @@ python app.py --zip <path> --output-dir ./out   Custom output directory
 2. Drag-and-drop or click to upload a GPO export ZIP
 3. Watch real-time progress and findings stream in
 4. Review findings in the searchable table — click any row for full details
-5. Download PDF report, CSV export, or Hebrew PDF (if Ollama is available)
+5. Download PDF report or CSV export
 6. Use the AI chat assistant (bottom-right) to ask questions about your audit
 
 ### Report Password
@@ -114,7 +113,7 @@ A unique password is generated each session for encrypting all output files. It 
 
 ## AI Features (Optional)
 
-Both AI features require [Ollama](https://ollama.ai) running locally with a LLaMA model.
+The AI chat feature requires [Ollama](https://ollama.ai) running locally with a LLaMA model.
 
 ### Setup
 
@@ -135,10 +134,6 @@ After an audit completes in the web UI, click the chat button (bottom-right) to 
 - "Give me PowerShell commands to remediate PWD-001"
 
 The assistant has full context of all findings, GPOs, and their configurations.
-
-### Hebrew PDF Translation
-
-When Ollama is available, a Hebrew translation of the full PDF report is generated automatically. Technical terms (GPO names, rule IDs, registry paths, severity levels) are preserved in English for accuracy.
 
 ## Architecture
 
@@ -163,7 +158,6 @@ Export-GPOs.ps1          PowerShell script to export GPOs from AD
         v
   output/pdf_report.py   Professional PDF with severity badges, risk boxes
   output/csv_export.py   AES-256 encrypted CSV ZIP
-  output/translator.py   Hebrew translation via Ollama LLaMA
         |
         v
   web/server.py          Flask app with SSE streaming + chat endpoints
@@ -179,7 +173,6 @@ reportlab>=4.0          PDF generation with encryption
 pyzipper>=0.3.6         AES-256 ZIP encryption
 defusedxml>=0.7         Safe XML parsing (prevents XXE)
 colorama>=0.4           Colored terminal output
-python-bidi>=0.6        Hebrew bidirectional text support
 requests>=2.31          HTTP client (Ollama integration)
 ```
 

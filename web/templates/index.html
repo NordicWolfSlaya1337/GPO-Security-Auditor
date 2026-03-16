@@ -237,7 +237,6 @@
     </div>
     <div class="actions">
       <a class="btn btn-primary" id="btn-pdf" href="#" download>Download PDF Report</a>
-      <a class="btn btn-primary" id="btn-pdf-he" href="#" download style="background:var(--purple);display:none">Download Hebrew PDF Report</a>
       <a class="btn btn-green" id="btn-csv" href="#" download>Download CSV Export</a>
       <button class="btn btn-primary" id="btn-regenerate" style="background:var(--surface2)">Regenerate Reports</button>
     </div>
@@ -374,11 +373,6 @@ function handleEvent(data) {
     // Download links
     document.getElementById('btn-pdf').href = '/api/download/pdf/'+jobId;
     document.getElementById('btn-csv').href = '/api/download/csv/'+jobId;
-    // Hebrew PDF
-    if(data.hebrew_available) {
-      document.getElementById('btn-pdf-he').style.display = 'inline-flex';
-      document.getElementById('btn-pdf-he').href = '/api/download/pdf-he/'+jobId;
-    }
     // Chat
     checkChatAvailable();
   }
