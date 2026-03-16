@@ -1,0 +1,7 @@
+flask>=3.0
+reportlab>=4.0
+pyzipper>=0.3.6
+defusedxml>=0.7
+colorama>=0.4
+python-bidi>=0.6
+requests>=2.31

@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPO Security Auditor</title>
+<style>
+  :root {
+    --bg: #0F172A; --surface: #1E293B; --surface2: #334155;
+    --text: #F1F5F9; --text2: #94A3B8; --border: #475569;
+    --blue: #3B82F6; --green: #22C55E; --red: #EF4444;
+    --orange: #F97316; --yellow: #EAB308; --purple: #A855F7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header h1 span { color: var(--blue); }
+  .password-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; font-family: 'Consolas', monospace; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .password-box label { color: var(--text2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .password-box code { color: var(--yellow); font-size: 14px; user-select: all; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  /* Upload */
+  .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 48px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 24px; }
+  .upload-zone:hover, .upload-zone.dragover { border-color: var(--blue); background: rgba(59,130,246,0.05); }
+  .upload-zone h2 { font-size: 18px; margin-bottom: 8px; }
+  .upload-zone p { color: var(--text2); font-size: 14px; }
+  .upload-zone input { display: none; }
+  .upload-zone.hidden { display: none; }
+
+  /* Progress */
+  .progress-section { display: none; margin-bottom: 24px; }
+  .progress-section.active { display: block; }
+  .progress-bar-container { background: var(--surface); border-radius: 8px; overflow: hidden; height: 32px; margin-bottom: 8px; position: relative; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--blue), var(--purple)); transition: width 0.3s; border-radius: 8px; min-width: 2%; }
+  .progress-bar-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 13px; font-weight: 600; }
+  .progress-message { color: var(--text2); font-size: 13px; }
+
+  /* Summary cards */
+  .summary-section { display: none; margin-bottom: 24px; }
+  .summary-section.active { display: block; }
+  .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card { background: var(--surface); border-radius: 8px; padding: 16px; text-align: center; border: 1px solid var(--border); }
+  .card .value { font-size: 32px; font-weight: 700; }
+  .card .label { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  .card.critical .value { color: var(--red); }
+  .card.high .value { color: var(--orange); }
+  .card.medium .value { color: var(--yellow); }
+  .card.low .value { color: var(--blue); }
+  .card.info .value { color: var(--text2); }
+  .card.score .value { font-size: 40px; }
+
+  /* Download buttons */
+  .actions { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .btn { padding: 10px 20px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-primary:hover { background: #2563EB; }
+  .btn-green { background: var(--green); color: white; }
+  .btn-green:hover { background: #16A34A; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid var(--border); }
+  .tab { padding: 10px 20px; cursor: pointer; font-size: 14px; color: var(--text2); border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Tables */
+  .table-container { background: var(--surface); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--surface2); text-align: left; padding: 10px 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; cursor: pointer; white-space: nowrap; }
+  th:hover { color: var(--text); }
+  td { padding: 10px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: rgba(59,130,246,0.03); }
+
+  .severity-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  .severity-Critical { background: rgba(239,68,68,0.15); color: #FCA5A5; }
+  .severity-High { background: rgba(249,115,22,0.15); color: #FDBA74; }
+  .severity-Medium { background: rgba(234,179,8,0.15); color: #FDE047; }
+  .severity-Low { background: rgba(59,130,246,0.15); color: #93C5FD; }
+  .severity-Info { background: rgba(148,163,184,0.15); color: #94A3B8; }
+
+  /* Finding detail modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; }
+  .modal-overlay.active { display: flex; align-items: center; justify-content: center; }
+  .modal { background: var(--surface); border-radius: 12px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 24px; border: 1px solid var(--border); }
+  .modal h3 { margin-bottom: 16px; font-size: 18px; }
+  .modal .field { margin-bottom: 12px; }
+  .modal .field-label { font-size: 11px; text-transform: uppercase; color: var(--text2); margin-bottom: 4px; letter-spacing: 0.5px; }
+  .modal .field-value { font-size: 14px; line-height: 1.5; }
+  .modal .close-btn { float: right; background: none; border: none; color: var(--text2); font-size: 20px; cursor: pointer; }
+  .modal .close-btn:hover { color: var(--text); }
+  .risk-box { background: rgba(239,68,68,0.08); border-left: 3px solid var(--red); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 8px 0; }
+  .rec-box { background: rgba(34,197,94,0.08); border-left: 3px solid var(--green); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 8px 0; }
+
+  .empty-state { text-align: center; padding: 48px; color: var(--text2); }
+
+  /* Log */
+  .log-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; max-height: 200px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 12px; color: var(--text2); margin-top: 12px; }
+  .log-box div { padding: 1px 0; }
+  .log-box .log-finding { color: var(--orange); }
+
+  /* Chat FAB */
+  .chat-fab {
+    position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px;
+    border-radius: 50%; background: var(--blue); border: none; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(59,130,246,0.4); z-index: 900;
+    display: none; align-items: center; justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .chat-fab:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(59,130,246,0.5); }
+  .chat-fab svg { width: 28px; height: 28px; fill: white; }
+
+  /* Chat Drawer */
+  .chat-drawer {
+    position: fixed; top: 61px; right: -440px; width: 420px;
+    height: calc(100vh - 61px); background: var(--surface);
+    border-left: 1px solid var(--border); z-index: 950;
+    display: flex; flex-direction: column;
+    transition: right 0.3s ease;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.3);
+  }
+  .chat-drawer.open { right: 0; }
+
+  .chat-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    font-weight: 600; font-size: 15px;
+  }
+  .chat-header .chat-title { display: flex; align-items: center; gap: 8px; }
+  .chat-status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text2); display: inline-block;
+  }
+  .chat-status-dot.online { background: var(--green); }
+  .chat-header .close-btn {
+    background: none; border: none; color: var(--text2);
+    font-size: 22px; cursor: pointer; padding: 0 4px;
+  }
+  .chat-header .close-btn:hover { color: var(--text); }
+
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+
+  .chat-welcome {
+    color: var(--text2); font-size: 13px; line-height: 1.6;
+    padding: 16px; background: var(--surface2); border-radius: 8px;
+  }
+  .chat-welcome ul { margin-top: 8px; padding-left: 16px; }
+  .chat-welcome li { margin-bottom: 4px; color: var(--blue); font-style: italic; }
+
+  .chat-msg {
+    max-width: 85%; padding: 10px 14px; border-radius: 12px;
+    font-size: 14px; line-height: 1.5; word-wrap: break-word;
+    white-space: pre-wrap;
+  }
+  .chat-msg.user {
+    align-self: flex-end; background: var(--blue); color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .chat-msg.assistant {
+    align-self: flex-start; background: var(--surface2); color: var(--text);
+    border-bottom-left-radius: 4px;
+  }
+  .chat-msg.error {
+    align-self: flex-start; background: rgba(239,68,68,0.15); color: #FCA5A5;
+    border-bottom-left-radius: 4px; font-size: 13px;
+  }
+
+  .chat-typing { color: var(--text2); font-size: 13px; font-style: italic; padding: 4px 0; }
+
+  .chat-input-area {
+    display: flex; gap: 8px; padding: 12px 16px;
+    border-top: 1px solid var(--border); background: var(--bg);
+  }
+  .chat-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; color: var(--text);
+    font-family: inherit; font-size: 14px; resize: none;
+    min-height: 40px; max-height: 100px; outline: none;
+  }
+  .chat-input:focus { border-color: var(--blue); }
+  .chat-input::placeholder { color: var(--text2); }
+  .chat-send {
+    padding: 10px 16px; border-radius: 8px; background: var(--blue);
+    color: white; border: none; font-weight: 600; cursor: pointer;
+    font-size: 14px; align-self: flex-end; white-space: nowrap;
+  }
+  .chat-send:hover { background: #2563EB; }
+  .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span>GPO</span> Security Auditor</h1>
+  <div class="password-box">
+    <label>Report Password:</label>
+    <code id="report-password">{{ password }}</code>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Upload -->
+  <div class="upload-zone" id="upload-zone">
+    <h2>Upload GPO Export ZIP</h2>
+    <p>Drag & drop your GPO export ZIP file here, or click to browse</p>
+    <input type="file" id="file-input" accept=".zip">
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-section" id="progress-section">
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+      <div class="progress-bar-text" id="progress-text">0%</div>
+    </div>
+    <div class="progress-message" id="progress-message">Initializing...</div>
+    <div class="log-box" id="log-box"></div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-section" id="summary-section">
+    <div class="summary-cards">
+      <div class="card score"><div class="value" id="risk-score">--</div><div class="label">Risk Score</div></div>
+      <div class="card critical"><div class="value" id="count-critical">0</div><div class="label">Critical</div></div>
+      <div class="card high"><div class="value" id="count-high">0</div><div class="label">High</div></div>
+      <div class="card medium"><div class="value" id="count-medium">0</div><div class="label">Medium</div></div>
+      <div class="card low"><div class="value" id="count-low">0</div><div class="label">Low</div></div>
+      <div class="card info"><div class="value" id="count-info">0</div><div class="label">Info</div></div>
+    </div>
+    <div class="actions">
+      <a class="btn btn-primary" id="btn-pdf" href="#" download>Download PDF Report</a>
+      <a class="btn btn-primary" id="btn-pdf-he" href="#" download style="background:var(--purple);display:none">Download Hebrew PDF Report</a>
+      <a class="btn btn-green" id="btn-csv" href="#" download>Download CSV Export</a>
+      <button class="btn btn-primary" id="btn-regenerate" style="background:var(--surface2)">Regenerate Reports</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div id="results-section" style="display:none">
+    <div class="tab-content active" id="tab-findings">
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th data-sort="rule_id" style="width:70px">ID</th>
+              <th data-sort="severity" style="width:80px">Severity</th>
+              <th data-sort="category" style="width:140px">Category</th>
+              <th data-sort="gpo_name" style="width:160px">GPO</th>
+              <th data-sort="title">Title</th>
+            </tr>
+          </thead>
+          <tbody id="findings-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<!-- Chat FAB -->
+<button class="chat-fab" id="chat-fab" title="Ask AI about audit results">
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/>
+  </svg>
+</button>
+
+<!-- Chat Drawer -->
+<div class="chat-drawer" id="chat-drawer">
+  <div class="chat-header">
+    <div class="chat-title">
+      <span class="chat-status-dot" id="chat-status-dot"></span>
+      AI Assistant
+    </div>
+    <button class="close-btn" id="chat-close">&times;</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-welcome" id="chat-welcome">
+      Ask anything about your GPO audit results:
+      <ul>
+        <li>"What are the most critical issues?"</li>
+        <li>"Which GPOs have password policy problems?"</li>
+        <li>"How do I fix the Kerberos findings?"</li>
+      </ul>
+    </div>
+  </div>
+  <div class="chat-input-area">
+    <textarea class="chat-input" id="chat-input" placeholder="Ask about audit results..." rows="1"></textarea>
+    <button class="chat-send" id="chat-send">Send</button>
+  </div>
+</div>
+
+<script>
+const findings = [];
+let jobId = null;
+let sortCol = 'severity';
+let sortAsc = true;
+const sevOrder = {Critical:0, High:1, Medium:2, Low:3, Info:4};
+
+// Upload handling
+const uploadZone = document.getElementById('upload-zone');
+const fileInput = document.getElementById('file-input');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('dragover'); if(e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => { if(fileInput.files.length) uploadFile(fileInput.files[0]); });
+
+async function uploadFile(file) {
+  if(!file.name.toLowerCase().endsWith('.zip')) { alert('Please select a ZIP file'); return; }
+  const fd = new FormData();
+  fd.append('file', file);
+  uploadZone.classList.add('hidden');
+  document.getElementById('progress-section').classList.add('active');
+  document.getElementById('results-section').style.display = 'block';
+
+  try {
+    const resp = await fetch('/api/upload', {method:'POST', body:fd});
+    const data = await resp.json();
+    if(data.error) { alert(data.error); return; }
+    jobId = data.job_id;
+    startStream(jobId);
+  } catch(e) { alert('Upload failed: '+e); }
+}
+
+function startStream(id) {
+  const evtSource = new EventSource('/api/stream/'+id);
+  evtSource.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    handleEvent(data);
+    if(data.type === 'complete' || data.type === 'error') evtSource.close();
+  };
+  evtSource.onerror = () => evtSource.close();
+}
+
+function handleEvent(data) {
+  if(data.type === 'progress') {
+    document.getElementById('progress-bar').style.width = data.percent+'%';
+    document.getElementById('progress-text').textContent = data.percent+'%';
+    document.getElementById('progress-message').textContent = data.message;
+    addLog(data.message);
+  }
+  if(data.type === 'finding' && data.finding) {
+    findings.push(data.finding);
+    renderFindings();
+    addLog('['+data.finding.severity+'] '+data.finding.title, 'log-finding');
+  }
+  if(data.type === 'summary') {
+    document.getElementById('summary-section').classList.add('active');
+    document.getElementById('risk-score').textContent = data.risk_score+'/100';
+    const sc = data.severity_counts;
+    document.getElementById('count-critical').textContent = sc.Critical||0;
+    document.getElementById('count-high').textContent = sc.High||0;
+    document.getElementById('count-medium').textContent = sc.Medium||0;
+    document.getElementById('count-low').textContent = sc.Low||0;
+    document.getElementById('count-info').textContent = sc.Info||0;
+    // Score color
+    const scoreEl = document.getElementById('risk-score');
+    const s = data.risk_score;
+    scoreEl.style.color = s<40?'var(--red)':s<60?'var(--orange)':s<80?'var(--yellow)':'var(--green)';
+    // Download links
+    document.getElementById('btn-pdf').href = '/api/download/pdf/'+jobId;
+    document.getElementById('btn-csv').href = '/api/download/csv/'+jobId;
+    // Hebrew PDF
+    if(data.hebrew_available) {
+      document.getElementById('btn-pdf-he').style.display = 'inline-flex';
+      document.getElementById('btn-pdf-he').href = '/api/download/pdf-he/'+jobId;
+    }
+    // Chat
+    checkChatAvailable();
+  }
+  if(data.type === 'error') {
+    document.getElementById('progress-message').textContent = 'Error: '+data.message;
+    addLog('ERROR: '+data.message);
+  }
+}
+
+function addLog(msg, cls) {
+  const box = document.getElementById('log-box');
+  const div = document.createElement('div');
+  div.textContent = new Date().toLocaleTimeString()+' '+msg;
+  if(cls) div.className = cls;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+// Findings table
+function renderFindings() {
+  const sorted = [...findings].sort((a,b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if(sortCol==='severity') { va=sevOrder[va]||5; vb=sevOrder[vb]||5; }
+    if(va<vb) return sortAsc?-1:1;
+    if(va>vb) return sortAsc?1:-1;
+    return 0;
+  });
+  const tbody = document.getElementById('findings-body');
+  tbody.innerHTML = sorted.map((f,i) => `
+    <tr style="cursor:pointer" onclick="showFinding(${i})">
+      <td>${esc(f.rule_id)}</td>
+      <td><span class="severity-badge severity-${f.severity}">${f.severity}</span></td>
+      <td>${esc(f.category)}</td>
+      <td>${esc(f.gpo_name)}</td>
+      <td>${esc(f.title)}</td>
+    </tr>`).join('');
+  document.getElementById('findings-count').textContent = '('+findings.length+')';
+}
+
+// Sort
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.sort;
+    if(sortCol===col) sortAsc=!sortAsc; else { sortCol=col; sortAsc=true; }
+    renderFindings();
+  });
+});
+
+// Modal
+function showFinding(idx) {
+  const f = [...findings].sort((a,b) => {
+    let va=a[sortCol],vb=b[sortCol];
+    if(sortCol==='severity'){va=sevOrder[va]||5;vb=sevOrder[vb]||5;}
+    return sortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
+  })[idx];
+  if(!f) return;
+  document.getElementById('modal-content').innerHTML = `
+    <button class="close-btn" onclick="closeModal()">&times;</button>
+    <span class="severity-badge severity-${f.severity}" style="font-size:13px;margin-bottom:8px">${f.severity}</span>
+    <h3>${esc(f.rule_id)}: ${esc(f.title)}</h3>
+    <div class="field"><div class="field-label">GPO</div><div class="field-value">${esc(f.gpo_name)}</div></div>
+    <div class="field"><div class="field-label">Category</div><div class="field-value">${esc(f.category)}</div></div>
+    ${f.setting_path?`<div class="field"><div class="field-label">Setting Path</div><div class="field-value" style="color:#60a5fa;font-family:monospace;font-size:12px">${esc(f.setting_path)}</div></div>`:''}
+    ${f.current_value?`<div class="field"><div class="field-label">Current Value</div><div class="field-value" style="color:var(--red)">${esc(f.current_value)}</div></div>`:''}
+    ${f.expected_value?`<div class="field"><div class="field-label">Expected Value</div><div class="field-value" style="color:var(--green)">${esc(f.expected_value)}</div></div>`:''}
+    <div class="field"><div class="field-label">Description</div><div class="field-value">${esc(f.description)}</div></div>
+    <div class="risk-box"><div class="field-label">Risk</div><div class="field-value">${esc(f.risk)}</div></div>
+    <div class="rec-box"><div class="field-label">Recommendation</div><div class="field-value">${esc(f.recommendation)}</div></div>`;
+  document.getElementById('modal-overlay').classList.add('active');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); }
+document.getElementById('modal-overlay').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+// Regenerate
+document.getElementById('btn-regenerate').addEventListener('click', async () => {
+  if(!jobId) return;
+  const btn = document.getElementById('btn-regenerate');
+  btn.disabled = true; btn.textContent = 'Generating...';
+  try {
+    const resp = await fetch('/api/generate/'+jobId, {method:'POST'});
+    const data = await resp.json();
+    if(data.error) alert(data.error); else alert('Reports regenerated!');
+  } catch(e) { alert('Failed: '+e); }
+  btn.disabled = false; btn.textContent = 'Regenerate Reports';
+});
+
+function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+
+// =====================
+// Chat functionality
+// =====================
+let chatOpen = false;
+let chatAvailable = false;
+let chatStreaming = false;
+let chatHistoryLoaded = false;
+
+async function checkChatAvailable() {
+  if(!jobId) return;
+  // Always show FAB after audit completes, regardless of Ollama status
+  document.getElementById('chat-fab').style.display = 'flex';
+  try {
+    const resp = await fetch('/api/chat/status');
+    const data = await resp.json();
+    chatAvailable = data.available;
+    if(chatAvailable) {
+      document.getElementById('chat-status-dot').classList.add('online');
+    } else {
+      document.getElementById('chat-status-dot').classList.remove('online');
+    }
+  } catch(e) { chatAvailable = false; }
+}
+
+async function loadChatHistory() {
+  if(!jobId || chatHistoryLoaded) return;
+  chatHistoryLoaded = true;
+  try {
+    const resp = await fetch('/api/chat/'+jobId+'/history');
+    const data = await resp.json();
+    if(data.messages && data.messages.length > 0) {
+      document.getElementById('chat-welcome').style.display = 'none';
+      data.messages.forEach(m => appendChatMessage(m.role, m.content));
+    }
+  } catch(e) {}
+}
+
+// Toggle drawer
+document.getElementById('chat-fab').addEventListener('click', () => {
+  chatOpen = !chatOpen;
+  document.getElementById('chat-drawer').classList.toggle('open', chatOpen);
+  if(chatOpen) {
+    // Show Ollama status in welcome if not available
+    if(!chatAvailable) {
+      document.getElementById('chat-welcome').innerHTML =
+        'AI Assistant requires <b>Ollama</b> running locally.<br><br>' +
+        'Start Ollama and load a model:<br>' +
+        '<code style="color:var(--yellow);font-size:13px">ollama run llama3.2</code><br><br>' +
+        '<span style="color:var(--text2);font-size:12px">Then refresh this page.</span>';
+      document.getElementById('chat-welcome').style.display = 'block';
+    }
+    loadChatHistory();
+    document.getElementById('chat-input').focus();
+  }
+});
+document.getElementById('chat-close').addEventListener('click', () => {
+  chatOpen = false;
+  document.getElementById('chat-drawer').classList.remove('open');
+});
+
+// Send message
+async function sendChatMessage() {
+  if(chatStreaming || !jobId) return;
+  if(!chatAvailable) {
+    document.getElementById('chat-welcome').style.display = 'none';
+    appendChatMessage('error', 'Ollama is not running. Start Ollama with a LLaMA model to use the AI assistant.\n\nRun: ollama run llama3.2');
+    return;
+  }
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if(!message) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('chat-welcome').style.display = 'none';
+  appendChatMessage('user', message);
+
+  // Create assistant placeholder for streaming
+  const assistantDiv = appendChatMessage('assistant', '');
+  const contentEl = assistantDiv.querySelector('.msg-content');
+  contentEl.textContent = '';
+  chatStreaming = true;
+  document.getElementById('chat-send').disabled = true;
+
+  try {
+    const resp = await fetch('/api/chat/'+jobId, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: message})
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullContent = '';
+
+    while(true) {
+      const {done, value} = await reader.read();
+      if(done) break;
+
+      buffer += decoder.decode(value, {stream: true});
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete line in buffer
+
+      for(const line of lines) {
+        if(!line.startsWith('data: ')) continue;
+        try {
+          const payload = JSON.parse(line.slice(6));
+          if(payload.type === 'token') {
+            fullContent += payload.content;
+            contentEl.textContent = fullContent;
+            scrollChatToBottom();
+          } else if(payload.type === 'error') {
+            assistantDiv.className = 'chat-msg error';
+            contentEl.textContent = payload.content;
+          } else if(payload.type === 'done') {
+            // streaming complete
+          }
+        } catch(pe) {}
+      }
+    }
+  } catch(e) {
+    assistantDiv.className = 'chat-msg error';
+    contentEl.textContent = 'Failed to connect to AI assistant.';
+  }
+
+  chatStreaming = false;
+  document.getElementById('chat-send').disabled = false;
+  scrollChatToBottom();
+}
+
+function appendChatMessage(role, content) {
+  const messagesEl = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + role;
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'msg-content';
+  contentDiv.textContent = content;
+  div.appendChild(contentDiv);
+  messagesEl.appendChild(div);
+  scrollChatToBottom();
+  return div;
+}
+
+function scrollChatToBottom() {
+  const el = document.getElementById('chat-messages');
+  el.scrollTop = el.scrollHeight;
+}
+
+// Send on button click or Enter (Shift+Enter for newline)
+document.getElementById('chat-send').addEventListener('click', sendChatMessage);
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
+  }
+});
+
+// Auto-resize textarea
+document.getElementById('chat-input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+});
+</script>
+</body>
+</html>
