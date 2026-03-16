@@ -174,8 +174,20 @@
   }
   .chat-msg.assistant {
     align-self: flex-start; background: var(--surface2); color: var(--text);
-    border-bottom-left-radius: 4px;
+    border-bottom-left-radius: 4px; white-space: normal;
   }
+  .chat-msg.assistant code {
+    background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 3px;
+    font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
+  }
+  .chat-msg.assistant pre {
+    background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px;
+    overflow-x: auto; margin: 6px 0; white-space: pre-wrap;
+  }
+  .chat-msg.assistant pre code { background: none; padding: 0; }
+  .chat-msg.assistant ul, .chat-msg.assistant ol { margin: 4px 0; padding-left: 20px; }
+  .chat-msg.assistant li { margin-bottom: 2px; }
+  .chat-msg.assistant p { margin: 4px 0; }
   .chat-msg.error {
     align-self: flex-start; background: rgba(239,68,68,0.15); color: #FCA5A5;
     border-bottom-left-radius: 4px; font-size: 13px;
@@ -587,7 +599,7 @@ async function sendChatMessage() {
           const payload = JSON.parse(line.slice(6));
           if(payload.type === 'token') {
             fullContent += payload.content;
-            contentEl.textContent = fullContent;
+            contentEl.innerHTML = renderMarkdown(fullContent);
             scrollChatToBottom();
           } else if(payload.type === 'error') {
             assistantDiv.className = 'chat-msg error';
@@ -608,13 +620,45 @@ async function sendChatMessage() {
   scrollChatToBottom();
 }
 
+function renderMarkdown(text) {
+  if(!text) return '';
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // Code blocks (``` ... ```)
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    // Italic
+    .replace(/\*(.+?)\*/g, '<i>$1</i>')
+    // Unordered lists
+    .replace(/^[\-\*] (.+)$/gm, '<li>$1</li>')
+    // Ordered lists
+    .replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>')
+    // Wrap consecutive <li> in <ul>
+    .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>')
+    // Headers
+    .replace(/^### (.+)$/gm, '<b>$1</b><br>')
+    .replace(/^## (.+)$/gm, '<b>$1</b><br>')
+    .replace(/^# (.+)$/gm, '<b>$1</b><br>')
+    // Line breaks (double newline = paragraph, single = br)
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+  return '<p>' + html + '</p>';
+}
+
 function appendChatMessage(role, content) {
   const messagesEl = document.getElementById('chat-messages');
   const div = document.createElement('div');
   div.className = 'chat-msg ' + role;
   const contentDiv = document.createElement('div');
   contentDiv.className = 'msg-content';
-  contentDiv.textContent = content;
+  if(role === 'assistant') {
+    contentDiv.innerHTML = renderMarkdown(content);
+  } else {
+    contentDiv.textContent = content;
+  }
   div.appendChild(contentDiv);
   messagesEl.appendChild(div);
   scrollChatToBottom();
