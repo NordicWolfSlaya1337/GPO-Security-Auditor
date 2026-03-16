@@ -35,8 +35,8 @@
 ### 1. Install
 
 ```bash
-git clone https://github.com/NordicWolfSlaya1337/nordics-gpo-security-auditor.git
-cd nordics-gpo-security-auditor
+git clone https://github.com/NordicWolfSlaya1337/GPO-Security-Auditor.git
+cd GPO-Security-Auditor
 pip install -r requirements.txt
 ```
 
