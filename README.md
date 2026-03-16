@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)
 ![Version](https://img.shields.io/badge/Version-1.0-blue)
-![License](https://img.shields.io/badge/License-Proprietary-red)
+![License](https://img.shields.io/badge/License-Proprietary%20(No%20Modification)-red)
 
 > Comprehensive vulnerability scanner for Active Directory Group Policy Objects.
 > Analyzes GPO exports against **80+ security rules** across **17 categories**,
@@ -35,8 +35,8 @@
 ### 1. Install
 
 ```bash
-git clone https://github.com/NordicWolfSlaya1337/nordics-gpo-security-auditor.git
-cd nordics-gpo-security-auditor
+git clone https://github.com/NordicWolfSlaya1337/GPO-Security-Auditor.git
+cd GPO-Security-Auditor
 pip install -r requirements.txt
 ```
 
@@ -178,6 +178,20 @@ Export-GPOs.ps1        PowerShell script to export GPOs from AD
 
 ---
 
+## Author
+
+**NordicWolfSlaya1337 (Benji Ender)**
+
+- GitHub: [@NordicWolfSlaya1337](https://github.com/NordicWolfSlaya1337)
+
+---
+
 ## License
 
-Proprietary. All rights reserved.
+This software is proprietary and provided under a custom restrictive license. See the [LICENSE](LICENSE) file for full terms.
+
+- Non-commercial / non-profit use only
+- No modification or derivative works permitted
+- No redistribution or reuse in other projects
+- All rights reserved by Benji Ender (NordicWolfSlaya1337)
+- Violators are subject to legal action

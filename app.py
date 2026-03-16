@@ -47,7 +47,8 @@ def main():
     password = generate_password()
     print(f"\n{Style.BRIGHT}{'='*60}")
     print(f"  GPO Security Auditor")
-    print(f"{'='*60}{Style.RESET_ALL}")
+    print(f"  {Fore.CYAN}Created by NordicWolfSlaya1337 (Benji Ender){Style.RESET_ALL}")
+    print(f"{Style.BRIGHT}{'='*60}{Style.RESET_ALL}")
     print(f"\n  {Fore.YELLOW}Report Password: {Style.BRIGHT}{password}{Style.RESET_ALL}")
     print(f"  {Fore.WHITE + Style.DIM}(Use this password to open PDF and CSV reports){Style.RESET_ALL}\n")
 

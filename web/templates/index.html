@@ -12,7 +12,7 @@
     --orange: #F97316; --yellow: #EAB308; --purple: #A855F7;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
 
   .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
   .header h1 { font-size: 20px; font-weight: 600; }
@@ -21,7 +21,7 @@
   .password-box label { color: var(--text2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
   .password-box code { color: var(--yellow); font-size: 14px; user-select: all; }
 
-  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; flex: 1; }
 
   /* Upload */
   .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 48px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 24px; }
@@ -63,6 +63,11 @@
   .btn-purple { background: var(--purple); color: white; }
   .btn-purple:hover { background: #9333EA; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Footer */
+  .footer { background: var(--surface); border-top: 1px solid var(--border); padding: 12px 32px; text-align: center; color: var(--text2); font-size: 12px; }
+  .footer a { color: var(--blue); text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
 
   /* Tabs */
   .tabs { display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid var(--border); }
@@ -303,6 +308,10 @@
     <button class="chat-send" id="chat-send">Send</button>
   </div>
 </div>
+
+<footer class="footer">
+  Created by <a href="https://github.com/NordicWolfSlaya1337" target="_blank">NordicWolfSlaya1337</a> (Benji Ender) &mdash; All rights reserved.
+</footer>
 
 <script>
 const findings = [];
