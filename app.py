@@ -76,6 +76,8 @@ def _run_web(args):
         import webbrowser
         webbrowser.open(url)
 
+    import logging
+    logging.getLogger("werkzeug").setLevel(logging.ERROR)
     app.run(host="0.0.0.0", port=args.port, debug=False, use_reloader=False)
 
 

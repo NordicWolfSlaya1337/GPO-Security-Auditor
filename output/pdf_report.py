@@ -147,20 +147,20 @@ def generate_pdf(report: AuditReport, output_path: str, password: str):
     story.append(Paragraph(L["risk_score"], styles["CoverSub"]))
     story.append(Spacer(1, 8))
     score_table = Table(
-        [[Paragraph(f"<font size='36' color='{score_color}'><b>{score}/100</b></font>", styles["CoverSub"])]],
+        [
+            [Paragraph(f"<font size='28' color='{score_color}'><b>{score}/100</b></font>", styles["CoverSub"])],
+            [Paragraph(f"<font size='12' color='{score_color}'><b>{report.risk_label}</b></font>", styles["CoverSub"])],
+        ],
         colWidths=[200],
+        rowHeights=[48, 24],
     )
     score_table.setStyle(TableStyle([
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("BOX", (0, 0), (-1, -1), 2, score_color),
-        ("TOPPADDING", (0, 0), (-1, -1), 12),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
     ]))
     score_table.hAlign = "CENTER"
     story.append(score_table)
-    story.append(Spacer(1, 8))
-    story.append(Paragraph(f"<b>{report.risk_label}</b>", styles["CoverSub"]))
     story.append(PageBreak())
 
     # === EXECUTIVE SUMMARY ===
@@ -225,13 +225,15 @@ def generate_pdf(report: AuditReport, output_path: str, password: str):
         headers = [L["col_id"], L["col_severity"], L["col_gpo"], L["col_title"]]
         col_widths = [50, 55, page_width * 0.25, page_width * 0.55 - 105]
 
+        cell_style = ParagraphStyle("CellText", parent=styles["Normal"],
+                                     fontSize=8, leading=10, fontName="Helvetica")
         table_data = [headers]
         for f in report.findings:
             row = [
                 f.rule_id,
                 f.severity.value,
-                _truncate(f.gpo_name, 25),
-                _truncate(f.title, 50),
+                Paragraph(_escape(f.gpo_name), cell_style),
+                Paragraph(_escape(f.title), cell_style),
             ]
             table_data.append(row)
 
@@ -383,14 +385,16 @@ def generate_pdf(report: AuditReport, output_path: str, password: str):
     inv_headers = [L["col_gpo_name"], L["col_status"], L["col_links"], L["col_modified"]]
     inv_widths = [130, 90, 180, 65]
 
+    inv_cell = ParagraphStyle("InvCell", parent=styles["Normal"],
+                              fontSize=7, leading=9, fontName="Helvetica")
     inv_data = [inv_headers]
     for g in sorted(report.gpos, key=lambda x: x.name.lower()):
-        links_str = ", ".join(l.som_path for l in g.links if l.enabled)[:50]
+        links_str = ", ".join(l.som_path for l in g.links if l.enabled)
         modified = g.modified_time.strftime("%Y-%m-%d") if g.modified_time else "N/A"
         row = [
-            _truncate(g.name, 30),
-            g.gpo_status[:20] if g.gpo_status else "N/A",
-            _truncate(links_str, 35) or "Unlinked",
+            Paragraph(_escape(g.name), inv_cell),
+            g.gpo_status or "N/A",
+            Paragraph(_escape(links_str) or "Unlinked", inv_cell),
             modified,
         ]
         inv_data.append(row)
@@ -433,7 +437,8 @@ def _escape(text: str) -> str:
             .replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
-            .replace('"', "&quot;"))
+            .replace('"', "&quot;")
+            .replace("\n", "<br/>"))
 
 
 def _truncate(text: str, max_len: int) -> str:
