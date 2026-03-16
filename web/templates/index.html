@@ -60,6 +60,8 @@
   .btn-primary:hover { background: #2563EB; }
   .btn-green { background: var(--green); color: white; }
   .btn-green:hover { background: #16A34A; }
+  .btn-purple { background: var(--purple); color: white; }
+  .btn-purple:hover { background: #9333EA; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* Tabs */
@@ -236,6 +238,7 @@
       <div class="card info"><div class="value" id="count-info">0</div><div class="label">Info</div></div>
     </div>
     <div class="actions">
+      <a class="btn btn-purple" id="btn-all" href="#" download>Download All Reports</a>
       <a class="btn btn-primary" id="btn-pdf" href="#" download>Download PDF Report</a>
       <a class="btn btn-green" id="btn-csv" href="#" download>Download CSV Export</a>
       <button class="btn btn-primary" id="btn-regenerate" style="background:var(--surface2)">Regenerate Reports</button>
@@ -371,6 +374,7 @@ function handleEvent(data) {
     const s = data.risk_score;
     scoreEl.style.color = s<40?'var(--red)':s<60?'var(--orange)':s<80?'var(--yellow)':'var(--green)';
     // Download links
+    document.getElementById('btn-all').href = '/api/download/all/'+jobId;
     document.getElementById('btn-pdf').href = '/api/download/pdf/'+jobId;
     document.getElementById('btn-csv').href = '/api/download/csv/'+jobId;
     // Chat

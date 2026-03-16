@@ -4,6 +4,7 @@ import queue
 import tempfile
 import threading
 import uuid
+import zipfile
 from pathlib import Path
 
 from flask import Flask, render_template, request, jsonify, Response, send_file
@@ -111,6 +112,20 @@ def download_password(job_id):
     if not os.path.exists(pw_path):
         return jsonify({"error": "Password file not generated"}), 404
     return send_file(pw_path, as_attachment=True, download_name="password.txt")
+
+
+@app.route("/api/download/all/<job_id>")
+def download_all(job_id):
+    if job_id not in jobs or jobs[job_id]["status"] != "complete":
+        return jsonify({"error": "Report not ready"}), 404
+    output_dir = jobs[job_id]["output_dir"]
+    bundle_path = os.path.join(output_dir, "gpo_audit_all_reports.zip")
+    with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name in ["gpo_audit_report.pdf", "gpo_audit_findings.zip", "password.txt"]:
+            fpath = os.path.join(output_dir, name)
+            if os.path.exists(fpath):
+                zf.write(fpath, name)
+    return send_file(bundle_path, as_attachment=True, download_name="gpo_audit_all_reports.zip")
 
 
 @app.route("/api/generate/<job_id>", methods=["POST"])
