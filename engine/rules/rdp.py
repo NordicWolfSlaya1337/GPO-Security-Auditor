@@ -214,6 +214,25 @@ class RDPRules(AuditRule):
                         expected_value="Enabled",
                     )
 
+                # RDP-014: Disconnected sessions should end (log off), not just disconnect
+                if (("end session" in name_lower or "terminate session" in name_lower)
+                        and "time limit" in name_lower
+                        and pol.state == "Disabled"):
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="RDP-014", category=self.category,
+                        severity=Severity.MEDIUM,
+                        title="Disconnected RDP sessions are not ended when time limits are reached",
+                        description="When session time limits are reached, sessions merely disconnect instead of logging off.",
+                        risk="Disconnected sessions that are not ended remain in memory on the server. They consume resources "
+                             "and can be reconnected to by attackers without re-authentication if password prompts are not enforced.",
+                        recommendation="Enable 'End session when time limits are reached' under Session Time Limits so that "
+                                       "sessions are fully logged off when any timeout fires.",
+                        setting_path=f"{_RDP_TPL} -> Session Time Limits -> End session when time limits are reached",
+                        current_value="Disabled (sessions disconnect but do not end)",
+                        expected_value="Enabled (sessions log off when limits are reached)",
+                    )
+
         # Check security options for RDP-related settings
         for opt in gpo.security_options:
             if "TerminalServices" in opt.key_name or "Terminal Services" in opt.key_name:

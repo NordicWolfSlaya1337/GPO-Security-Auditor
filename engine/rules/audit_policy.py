@@ -339,6 +339,8 @@ class AuditPolicyRules(AuditRule):
     rule_id_prefix = "AUD"
     category = "Audit & Logging Policy"
 
+    _checked_log_sizes = False
+
     def evaluate(self, gpo: GPO, all_gpos: list) -> Generator[Finding, None, None]:
         # ---------------------------------------------------------------
         # AUD-001 to AUD-017: only fire against the two default GPOs
@@ -352,6 +354,13 @@ class AuditPolicyRules(AuditRule):
         # AUD-020: legacy vs advanced audit conflict (applies to ALL GPOs)
         # ---------------------------------------------------------------
         yield from self._check_legacy_conflict(gpo, all_gpos)
+
+        # ---------------------------------------------------------------
+        # AUD-021: event log max sizes (run once across all GPOs)
+        # ---------------------------------------------------------------
+        if not AuditPolicyRules._checked_log_sizes:
+            AuditPolicyRules._checked_log_sizes = True
+            yield from self._check_log_sizes(all_gpos)
 
     # -- AUD-001 to AUD-017 ------------------------------------------------
 
@@ -590,6 +599,86 @@ class AuditPolicyRules(AuditRule):
                 applies_to=_applies_to(gpo),
                 architecture_fix="centralize",
             )
+
+    # -- AUD-021: event log maximum sizes in default GPOs --------------------
+
+    _LOG_NAMES = ["Security", "System", "Application", "Setup"]
+    _MIN_LOG_SIZE_KB = 102400  # 100 MB
+
+    def _check_log_sizes(self, all_gpos: list) -> Generator[Finding, None, None]:
+        """Check that event log max sizes are >= 100 MB in default GPOs."""
+        for g in all_gpos:
+            if not is_default_gpo(g):
+                continue
+
+            label = default_gpo_label(g)
+            undersized = []  # (log_name, current_size_kb or "Not configured")
+
+            for log_name in self._LOG_NAMES:
+                found_size = None
+
+                # Check admin template policies
+                for pol in g.registry_policies:
+                    name_lower = pol.name.lower()
+                    if "maximum log size" in name_lower and log_name.lower() in name_lower:
+                        if pol.state == "Enabled":
+                            for v in pol.values.values():
+                                try:
+                                    found_size = int(v)
+                                except (ValueError, TypeError):
+                                    pass
+                        elif pol.state == "Disabled":
+                            found_size = 0
+                        break
+
+                # Check GPP registry items
+                if found_size is None:
+                    for item in g.registry_items:
+                        if (log_name.lower() in item.key.lower()
+                                and "eventlog" in item.key.lower()
+                                and item.value_name.lower() == "maxsize"):
+                            try:
+                                found_size = int(item.value_data)
+                            except (ValueError, TypeError):
+                                pass
+                            break
+
+                if found_size is None:
+                    undersized.append((log_name, "Not configured (using default)"))
+                elif found_size < self._MIN_LOG_SIZE_KB:
+                    undersized.append((log_name, f"{found_size} KB ({found_size // 1024} MB)"))
+
+            if undersized:
+                bullet_list = "\n".join(f"  \u2022 {name}: {size}" for name, size in undersized)
+                yield Finding(
+                    gpo_name=g.name,
+                    gpo_guid=g.guid,
+                    rule_id="AUD-021",
+                    category=self.category,
+                    severity=Severity.MEDIUM,
+                    title=f"Event log maximum sizes too small in {label}",
+                    description=(
+                        f"{len(undersized)} event log(s) in '{g.name}' have maximum sizes below "
+                        f"the recommended 100 MB minimum:\n\n{bullet_list}"
+                    ),
+                    risk=(
+                        "Small event logs are overwritten quickly during normal operations or "
+                        "can be intentionally filled by an attacker to erase evidence of compromise. "
+                        "Security logs at the Windows default of 20 MB can roll over in hours on busy servers."
+                    ),
+                    recommendation=(
+                        f"Configure the following logs to at least 102400 KB (100 MB) in {label}:\n\n"
+                        + "\n".join(f"  \u2022 {name}" for name, _ in undersized) +
+                        "\n\nPath: Computer Configuration > Policies > Administrative Templates > "
+                        "Windows Components > Event Log Service > [Log Name] > "
+                        "Specify the maximum log file size (KB)"
+                    ),
+                    setting_path="Computer Configuration -> Policies -> Administrative Templates -> Windows Components -> Event Log Service",
+                    current_value=f"{len(undersized)} log(s) below 100 MB",
+                    expected_value="All logs >= 102400 KB (100 MB)",
+                    confidence="High",
+                    applies_to="DCs" if is_default_dc_policy(g) else "domain computers",
+                )
 
     # -- AUD-020: advanced vs legacy audit conflict -------------------------
 

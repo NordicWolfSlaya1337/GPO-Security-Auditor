@@ -335,6 +335,25 @@ REGISTRY_CHECKS = [
                           "Registry: HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters\\AutoShareWks=0.",
         "expected": "Disabled (0) on workstations",
     },
+    {
+        "id": "REG-026",
+        "name_pattern": "Removable Storage",
+        "key_pattern": "RemovableStorage.*Deny_All|Deny_All.*Removable",
+        "path": f"{_ADMIN_TPL} -> System -> Removable Storage Access -> All Removable Storage classes: Deny all access",
+        "severity": Severity.MEDIUM,
+        "check_policy": lambda p: "all removable storage" in p.name.lower() and "deny all" in p.name.lower() and p.state == "Disabled",
+        "check_item": lambda i: "deny_all" in i.value_name.lower() and "removable" in i.key.lower() and i.value_data == "0",
+        "title": "Removable storage deny-all policy is not enforced",
+        "description": "The master 'All Removable Storage classes: Deny all access' policy is not enabled. "
+                       "Individual deny-write/deny-execute rules (REG-018) provide partial protection, but "
+                       "the deny-all switch blocks read, write, and execute on all removable devices.",
+        "risk": "Without the deny-all switch, USB storage devices can still be read even if write/execute "
+                "is blocked. Attackers can use USB devices to introduce malware via autorun or social engineering, "
+                "and sensitive data can be read from removable media brought into the environment.",
+        "recommendation": "Enable 'All Removable Storage classes: Deny all access' to block all access to USB drives, "
+                          "SD cards, and other removable media. Grant exceptions via device ID allow lists for approved devices.",
+        "expected": "Enabled (Deny all access)",
+    },
 ]
 
 

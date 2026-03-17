@@ -111,12 +111,12 @@ A unique password is generated each session for encrypting all outputs. Displaye
 | Kerberos | KRB-001 – KRB-005 | 5 | Ticket lifetime, renewal, validation, weak encryption |
 | Security Options | SEC-001 – SEC-014 | 14 | Guest account, LM auth, SMB signing |
 | User Rights | URA-* | Dynamic | Dangerous privileges (SeDebugPrivilege, etc.) |
-| Audit & Logging | AUD-001, AUD-018 – AUD-020 | 4 | Subcategory coverage, script block logging |
-| Registry & Admin Templates | REG-001 – REG-025 | 21 | UAC, WDigest, LLMNR, SMBv1, WinRM, admin shares |
+| Audit & Logging | AUD-001, AUD-018 – AUD-021 | 5 | Subcategory coverage, script block logging, event log sizes |
+| Registry & Admin Templates | REG-001 – REG-026 | 22 | UAC, WDigest, LLMNR, SMBv1, WinRM, admin shares, USB deny-all |
 | Firewall | FW-001 – FW-003 | 3 | Profile state, inbound defaults |
-| RDP | RDP-001 – RDP-013 | 13 | NLA, encryption, redirection, session timeouts, hijacking |
+| RDP | RDP-001 – RDP-014 | 14 | NLA, encryption, redirection, session timeouts, hijacking |
 | Defender | DEF-001 – DEF-004 | 4 | Real-time protection, MAPS |
-| GPO Hygiene | HYG-002 – HYG-011 | 6 | Empty GPOs, naming, version mismatch |
+| GPO Hygiene | HYG-002 – HYG-012 | 7 | Empty GPOs, naming, version mismatch, WEF conflicts |
 | SDDL Permissions | SDDL-001 – SDDL-005 | 5 | Anonymous access, Everyone write, delegation |
 | LAPS | LAPS-001 – LAPS-004 | 4 | Deployment, password length/age |
 | Credential Exposure | CRED-001 – CRED-002 | 2 | Embedded cpassword |

@@ -9,7 +9,14 @@ class GPOHygieneRules(AuditRule):
     rule_id_prefix = "HYG"
     category = "GPO Hygiene"
 
+    _checked_wef = False
+
     def evaluate(self, gpo: GPO, all_gpos: list) -> Generator[Finding, None, None]:
+        # HYG-012: WEF subscription URL conflicts (run once)
+        if not GPOHygieneRules._checked_wef:
+            GPOHygieneRules._checked_wef = True
+            yield from self._check_wef_conflicts(all_gpos)
+
         # HYG-002: Empty GPO
         if gpo.is_empty:
             yield Finding(
@@ -132,4 +139,62 @@ class GPOHygieneRules(AuditRule):
                     expected_value="Separate Computer and User GPOs",
                     confidence="Low",
                     applies_to="domain",
+                )
+
+    def _check_wef_conflicts(self, all_gpos: list) -> Generator[Finding, None, None]:
+        """Detect OUs where multiple GPOs configure Windows Event Forwarding subscriptions."""
+        # Map each WEF-configuring GPO to its linked OUs
+        ou_to_gpos = {}  # ou_path -> [gpo_name, ...]
+
+        for g in all_gpos:
+            is_wef = False
+
+            # Check registry policies for event forwarding / subscription manager
+            for pol in g.registry_policies:
+                combined = (pol.name + (pol.category or "")).lower()
+                if ("event forwarding" in combined or "subscription manager" in combined) and pol.state == "Enabled":
+                    is_wef = True
+                    break
+
+            # Check GPP registry items for SubscriptionManager
+            if not is_wef:
+                for item in g.registry_items:
+                    if "subscriptionmanager" in item.key.lower() or "subscriptionmanager" in item.value_name.lower():
+                        is_wef = True
+                        break
+
+            if is_wef:
+                for link in g.links:
+                    if link.enabled and link.som_path:
+                        ou_to_gpos.setdefault(link.som_path, [])
+                        if g.name not in ou_to_gpos[link.som_path]:
+                            ou_to_gpos[link.som_path].append(g.name)
+
+        # Yield one finding per OU with 2+ WEF GPOs
+        for ou_path, gpo_names in ou_to_gpos.items():
+            if len(gpo_names) >= 2:
+                bullet_list = "\n".join(f"  \u2022 {name}" for name in gpo_names)
+                yield Finding(
+                    gpo_name=f"OU: {ou_path}",
+                    gpo_guid="",
+                    rule_id="HYG-012",
+                    category=self.category,
+                    severity=Severity.MEDIUM,
+                    title=f"Multiple GPOs configure WEF subscriptions on the same OU",
+                    description=(
+                        f"{len(gpo_names)} GPOs linked to '{ou_path}' each configure "
+                        f"Windows Event Forwarding subscription URLs:\n\n{bullet_list}"
+                    ),
+                    risk=(
+                        "When multiple GPOs set the WEF SubscriptionManager value on the same OU, "
+                        "GPO precedence determines which one wins. The losing GPO's subscription URL "
+                        "is silently ignored, causing events to not be forwarded to the intended collector."
+                    ),
+                    recommendation=(
+                        f"Consolidate WEF subscription configuration into a single GPO per OU. "
+                        f"Remove the WEF subscription settings from all but one GPO linked to '{ou_path}'."
+                    ),
+                    setting_path="Computer Configuration -> Policies -> Administrative Templates -> Windows Components -> Event Forwarding -> Configure target Subscription Manager",
+                    current_value=f"{len(gpo_names)} GPOs configuring WEF on this OU",
+                    expected_value="1 GPO per OU for WEF subscription configuration",
                 )
