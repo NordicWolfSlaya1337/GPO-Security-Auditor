@@ -72,6 +72,83 @@ class RDPRules(AuditRule):
                         expected_value="Disabled",
                     )
 
+                # RDP-005: Clipboard redirection allowed
+                if "do not allow clipboard redirection" in name_lower and pol.state == "Disabled":
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="RDP-005", category=self.category,
+                        severity=Severity.MEDIUM,
+                        title="RDP clipboard redirection is allowed",
+                        description="Clipboard copy-paste and drag-and-drop are allowed in RDP sessions.",
+                        risk="Clipboard redirection enables data exfiltration by copying sensitive data from the remote session to the local machine. "
+                             "It also allows malware transfer via paste operations and drag-and-drop.",
+                        recommendation="Set 'Do not allow clipboard redirection' to Enabled to block clipboard sharing in RDP sessions.",
+                        setting_path=f"{_RDP_TPL} -> Device and Resource Redirection -> Do not allow clipboard redirection",
+                        current_value="Allowed",
+                        expected_value="Disabled",
+                    )
+
+                # RDP-006: COM port redirection allowed
+                if "do not allow com port redirection" in name_lower and pol.state == "Disabled":
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="RDP-006", category=self.category,
+                        severity=Severity.LOW,
+                        title="RDP COM port redirection is allowed",
+                        description="COM port redirection is allowed in RDP sessions.",
+                        risk="COM port redirection exposes local serial devices to the remote session, which can be exploited for unauthorized hardware access.",
+                        recommendation="Set 'Do not allow COM port redirection' to Enabled.",
+                        setting_path=f"{_RDP_TPL} -> Device and Resource Redirection -> Do not allow COM port redirection",
+                        current_value="Allowed",
+                        expected_value="Disabled",
+                    )
+
+                # RDP-007: Printer redirection allowed
+                if "do not allow client printer redirection" in name_lower and pol.state == "Disabled":
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="RDP-007", category=self.category,
+                        severity=Severity.LOW,
+                        title="RDP printer redirection is allowed",
+                        description="Client printer redirection is allowed in RDP sessions.",
+                        risk="Printer redirection can be abused to exfiltrate data by printing sensitive documents to a local printer from a remote session.",
+                        recommendation="Set 'Do not allow client printer redirection' to Enabled.",
+                        setting_path=f"{_RDP_TPL} -> Device and Resource Redirection -> Do not allow client printer redirection",
+                        current_value="Allowed",
+                        expected_value="Disabled",
+                    )
+
+                # RDP-008: LPT port redirection allowed
+                if "do not allow lpt port redirection" in name_lower and pol.state == "Disabled":
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="RDP-008", category=self.category,
+                        severity=Severity.LOW,
+                        title="RDP LPT port redirection is allowed",
+                        description="LPT (parallel) port redirection is allowed in RDP sessions.",
+                        risk="LPT port redirection exposes local parallel port devices to the remote session, increasing the attack surface.",
+                        recommendation="Set 'Do not allow LPT port redirection' to Enabled.",
+                        setting_path=f"{_RDP_TPL} -> Device and Resource Redirection -> Do not allow LPT port redirection",
+                        current_value="Allowed",
+                        expected_value="Disabled",
+                    )
+
+                # RDP-009: USB/PnP device redirection allowed
+                if "do not allow supported plug and play" in name_lower and pol.state == "Disabled":
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="RDP-009", category=self.category,
+                        severity=Severity.MEDIUM,
+                        title="RDP USB/Plug and Play device redirection is allowed",
+                        description="Supported Plug and Play device redirection is allowed in RDP sessions.",
+                        risk="USB/PnP redirection allows local USB devices to be accessed from the remote session. "
+                             "This can be exploited for BadUSB attacks, unauthorized data transfer, or keystroke injection.",
+                        recommendation="Set 'Do not allow supported Plug and Play device redirection' to Enabled.",
+                        setting_path=f"{_RDP_TPL} -> Device and Resource Redirection -> Do not allow supported Plug and Play device redirection",
+                        current_value="Allowed",
+                        expected_value="Disabled",
+                    )
+
         # Check security options for RDP-related settings
         for opt in gpo.security_options:
             if "TerminalServices" in opt.key_name or "Terminal Services" in opt.key_name:
