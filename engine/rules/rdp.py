@@ -149,6 +149,71 @@ class RDPRules(AuditRule):
                         expected_value="Disabled",
                     )
 
+                # RDP-010: Idle session timeout not configured
+                if "set time limit for active but idle" in name_lower and pol.state == "Disabled":
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="RDP-010", category=self.category,
+                        severity=Severity.MEDIUM,
+                        title="RDP idle session timeout is disabled",
+                        description="No time limit is set for idle RDP sessions.",
+                        risk="Idle RDP sessions remain open indefinitely. An attacker with physical or network access "
+                             "can hijack an abandoned session without needing credentials.",
+                        recommendation="Set 'Set time limit for active but idle Remote Desktop Services sessions' to 15 or 30 minutes.",
+                        setting_path=f"{_RDP_TPL} -> Session Time Limits -> Set time limit for active but idle Remote Desktop Services sessions",
+                        current_value="Disabled (no timeout)",
+                        expected_value="15-30 minutes",
+                    )
+
+                # RDP-011: Active session timeout not configured
+                if "set time limit for active remote desktop" in name_lower and "idle" not in name_lower and pol.state == "Disabled":
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="RDP-011", category=self.category,
+                        severity=Severity.LOW,
+                        title="RDP active session timeout is disabled",
+                        description="No maximum time limit is set for active RDP sessions.",
+                        risk="Without a maximum session duration, RDP sessions can persist indefinitely. "
+                             "Long-lived sessions increase the window for credential theft and session hijacking.",
+                        recommendation="Set 'Set time limit for active Remote Desktop Services sessions' to a reasonable duration (e.g., 8-12 hours).",
+                        setting_path=f"{_RDP_TPL} -> Session Time Limits -> Set time limit for active Remote Desktop Services sessions",
+                        current_value="Disabled (no timeout)",
+                        expected_value="8-12 hours",
+                    )
+
+                # RDP-012: Disconnected session timeout not configured
+                if "set time limit for disconnected sessions" in name_lower and pol.state == "Disabled":
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="RDP-012", category=self.category,
+                        severity=Severity.MEDIUM,
+                        title="RDP disconnected session timeout is disabled",
+                        description="Disconnected RDP sessions are not terminated after a time limit.",
+                        risk="Disconnected sessions remain in memory on the server indefinitely. An attacker who gains "
+                             "network access can reconnect to an existing disconnected session without re-authentication, "
+                             "inheriting the original user's privileges.",
+                        recommendation="Set 'Set time limit for disconnected sessions' to 1-5 minutes to ensure disconnected sessions are terminated promptly.",
+                        setting_path=f"{_RDP_TPL} -> Session Time Limits -> Set time limit for disconnected sessions",
+                        current_value="Disabled (never terminates)",
+                        expected_value="1-5 minutes",
+                    )
+
+                # RDP-013: Password not required upon reconnection (session hijacking)
+                if "always prompt for password upon connection" in name_lower and pol.state == "Disabled":
+                    yield Finding(
+                        gpo_name=gpo.name, gpo_guid=gpo.guid,
+                        rule_id="RDP-013", category=self.category,
+                        severity=Severity.HIGH,
+                        title="RDP does not require password on reconnection",
+                        description="Users are not prompted for a password when reconnecting to an RDP session.",
+                        risk="Without a password prompt on reconnection, an attacker who gains access to a disconnected "
+                             "or idle session can resume it without credentials. This is the primary RDP session hijacking vector.",
+                        recommendation="Enable 'Always prompt for password upon connection' to force re-authentication on every RDP connection.",
+                        setting_path=f"{_RDP_TPL} -> Security -> Always prompt for password upon connection",
+                        current_value="Disabled",
+                        expected_value="Enabled",
+                    )
+
         # Check security options for RDP-related settings
         for opt in gpo.security_options:
             if "TerminalServices" in opt.key_name or "Terminal Services" in opt.key_name:

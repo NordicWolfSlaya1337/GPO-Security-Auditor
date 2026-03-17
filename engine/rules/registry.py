@@ -316,6 +316,25 @@ REGISTRY_CHECKS = [
                           "service and disable HTTP listeners. Use 'winrm quickconfig -transport:https'.",
         "expected": "HTTPS transport only",
     },
+    {
+        "id": "REG-025",
+        "name_pattern": "AutoShareWks|AutoShareServer|AdminShare",
+        "key_pattern": "LanmanServer.*Parameters.*AutoShare",
+        "path": f"{_GPP_REG} -> HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters",
+        "severity": Severity.MEDIUM,
+        "check_policy": None,
+        "check_item": lambda i: "autoshare" in i.value_name.lower() and i.value_data == "1",
+        "title": "Administrative shares (C$, ADMIN$) are enabled",
+        "description": "Default administrative shares (C$, D$, ADMIN$) are explicitly enabled via GPO. "
+                       "These hidden shares provide remote access to every drive and the Windows directory.",
+        "risk": "Administrative shares are a primary lateral movement vector. Once an attacker obtains "
+                "admin credentials, they can access C$ on any machine to deploy malware, exfiltrate data, "
+                "or execute commands remotely via PsExec or similar tools.",
+        "recommendation": "Disable administrative shares on workstations by setting AutoShareWks to 0. "
+                          "For servers, evaluate whether ADMIN$ is needed and set AutoShareServer to 0 if not. "
+                          "Registry: HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters\\AutoShareWks=0.",
+        "expected": "Disabled (0) on workstations",
+    },
 ]
 
 

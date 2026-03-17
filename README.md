@@ -112,9 +112,9 @@ A unique password is generated each session for encrypting all outputs. Displaye
 | Security Options | SEC-001 – SEC-014 | 14 | Guest account, LM auth, SMB signing |
 | User Rights | URA-* | Dynamic | Dangerous privileges (SeDebugPrivilege, etc.) |
 | Audit & Logging | AUD-001, AUD-018 – AUD-020 | 4 | Subcategory coverage, script block logging |
-| Registry & Admin Templates | REG-001 – REG-024 | 20 | UAC, WDigest, LLMNR, SMBv1, WinRM |
+| Registry & Admin Templates | REG-001 – REG-025 | 21 | UAC, WDigest, LLMNR, SMBv1, WinRM, admin shares |
 | Firewall | FW-001 – FW-003 | 3 | Profile state, inbound defaults |
-| RDP | RDP-001 – RDP-009 | 9 | NLA, encryption, clipboard, USB, drive redirection |
+| RDP | RDP-001 – RDP-013 | 13 | NLA, encryption, redirection, session timeouts, hijacking |
 | Defender | DEF-001 – DEF-004 | 4 | Real-time protection, MAPS |
 | GPO Hygiene | HYG-002 – HYG-011 | 6 | Empty GPOs, naming, version mismatch |
 | SDDL Permissions | SDDL-001 – SDDL-005 | 5 | Anonymous access, Everyone write, delegation |
